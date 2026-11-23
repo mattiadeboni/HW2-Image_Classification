@@ -1,0 +1,14 @@
+{
+    "full_finetuning": {
+        "accuracy": 0.830744071954211,
+        "macro_f1": 0.8270777738072419
+    },
+    "head_training": {
+        "accuracy": 0.8258381030253475,
+        "macro_f1": 0.8247592443361746
+    },
+    "feature_extraction_svm": {
+        "accuracy": 0.8446443172526574,
+        "macro_f1": 0.8433374846650107
+    }
+}
