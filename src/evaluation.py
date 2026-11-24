@@ -132,7 +132,7 @@ def save_predictions(y_true, y_pred, image_paths, class_names, model_name):
 
     for i in range(len(y_true)):
         records.append({
-            "image": str(image_paths[i]).relative_to(PROJECT_ROOT).as_posix(),
+            "image": Path(image_paths[i]).relative_to(PROJECT_ROOT).as_posix(),
             "true_label": int(y_true[i]),
             "true_class": class_names[y_true[i]],
             "predicted_label": int(y_pred[i]),

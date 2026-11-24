@@ -38,19 +38,38 @@ def analyze_model(model_name):
     print("\nREPRESENTATIVE CORRECT PREDICTIONS")
     print("----------------------------------")
 
-    print(
+    correct_examples = (
         df[df["correct"]]
-        .head(5)[["image", "true_class", "predicted_class"]]
-        .to_string(index=False)
+        .groupby("true_class", group_keys=False)
+        .sample(n=1, random_state=42)
+        .head(5)
     )
 
-    # Representative incorrect predictions
+    print(
+        correct_examples[
+            ["image", "true_class", "predicted_class"]
+        ].to_string(index=False)
+    )
+
+    # Representative incorrect predictions:
+    # one example for each of the five most frequent confusion pairs
     print("\nREPRESENTATIVE INCORRECT PREDICTIONS")
     print("------------------------------------")
 
+    top_pairs = confusion_pairs.head(5).index
+
+    incorrect_examples = pd.concat([
+        errors[
+            (errors["true_class"] == true_class) &
+            (errors["predicted_class"] == predicted_class)
+        ].head(1)
+        for true_class, predicted_class in top_pairs
+    ])
+
     print(
-        errors.head(5)[["image", "true_class", "predicted_class"]]
-        .to_string(index=False)
+        incorrect_examples[
+            ["image", "true_class", "predicted_class"]
+        ].to_string(index=False)
     )
 
 
