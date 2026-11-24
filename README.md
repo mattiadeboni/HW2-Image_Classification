@@ -1,7 +1,5 @@
 # HW2 – Image Classification
 
-Author: Mattia De Boni (VR555453)
-
 This project implements and compares three image-classification approaches on the **Oxford-IIIT Pet Dataset**, which contains 7,349 images belonging to 37 cat and dog breeds.
 
 The experiments use a pretrained **MobileNetV3-Small**, initialized with ImageNet-1K weights, and compare:
@@ -9,6 +7,8 @@ The experiments use a pretrained **MobileNetV3-Small**, initialized with ImageNe
 1. **Full fine-tuning** – all network parameters are trainable.
 2. **Classifier-head training** – the convolutional feature extractor is frozen, and only the classifier is trained.
 3. **Feature extraction + Linear SVM** – the pretrained network is used as a fixed feature extractor, and a scikit-learn Linear SVM performs classification.
+
+Author: Mattia De Boni (VR555453)
 
 ## Repository structure
 
