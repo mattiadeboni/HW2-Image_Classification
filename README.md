@@ -1,6 +1,6 @@
 # HW2 – Image Classification
 
-## Oxford-IIIT Pet Image Classification
+Author: Mattia De Boni (VR555453)
 
 This project implements and compares three image-classification approaches on the **Oxford-IIIT Pet Dataset**, which contains 7,349 images belonging to 37 cat and dog breeds.
 
