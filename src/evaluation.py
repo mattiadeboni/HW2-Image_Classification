@@ -29,6 +29,7 @@ PREDICTIONS_DIR = RESULTS_DIR / "predictions"
 
 
 def evaluate_torch_model(model, loader, device):
+    # Switch to inference mode to disable dropout and parameter updates.
     model.eval()
 
     all_predictions = []
@@ -36,13 +37,16 @@ def evaluate_torch_model(model, loader, device):
 
     start_time = time.perf_counter()
 
+    # Disable gradient calculation because no training is performed.
     with torch.no_grad():
         for images, labels in loader:
             images = images.to(device)
 
+            # Convert output scores to the class with the highest score.
             outputs = model(images)
             predictions = outputs.argmax(dim=1)
 
+            # Store predictions and labels on the CPU as NumPy arrays.
             all_predictions.extend(predictions.cpu().numpy())
             all_labels.extend(labels.numpy())
 
@@ -56,6 +60,7 @@ def evaluate_torch_model(model, loader, device):
 
 
 def extract_test_features(model, loader, device):
+    # Switch to inference mode and use the model only as a feature extractor.
     model.eval()
 
     all_features = []
@@ -63,15 +68,18 @@ def extract_test_features(model, loader, device):
 
     start_time = time.perf_counter()
 
+    # Disable gradient calculation during feature extraction.
     with torch.no_grad():
         for images, labels in loader:
             images = images.to(device)
 
+            # Extract one feature vector for each test image.
             features = extract_features(model, images)
 
             all_features.append(features.cpu().numpy())
             all_labels.append(labels.numpy())
 
+    # Combine batches into complete test feature and label arrays.
     features = np.concatenate(all_features, axis=0)
     labels = np.concatenate(all_labels, axis=0)
 
@@ -81,6 +89,7 @@ def extract_test_features(model, loader, device):
 
 
 def calculate_metrics(y_true, y_pred):
+    # Measure overall accuracy and the average F1 score across all classes.
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "macro_f1": float(
@@ -90,14 +99,17 @@ def calculate_metrics(y_true, y_pred):
 
 
 def save_confusion_matrix(y_true, y_pred, class_names, model_name):
+    # Define the labels explicitly so all dataset classes are shown.
     labels = np.arange(len(class_names))
 
+    # Count the number of true/predicted class combinations.
     cm = confusion_matrix(
         y_true,
         y_pred,
         labels=labels
     )
 
+    # Prepare a visualization with class names instead of numeric labels.
     display = ConfusionMatrixDisplay(
         confusion_matrix=cm,
         display_labels=class_names
@@ -105,6 +117,7 @@ def save_confusion_matrix(y_true, y_pred, class_names, model_name):
 
     fig, ax = plt.subplots(figsize=(18, 16))
 
+    # Rotate class names so that long pet-breed names remain readable.
     display.plot(
         ax=ax,
         xticks_rotation=90,
@@ -115,6 +128,7 @@ def save_confusion_matrix(y_true, y_pred, class_names, model_name):
     ax.set_title(f"{model_name} - Test Confusion Matrix")
     fig.tight_layout()
 
+    # Create the output directory before saving the plot.
     CM_DIR.mkdir(parents=True, exist_ok=True)
 
     fig.savefig(
@@ -126,10 +140,12 @@ def save_confusion_matrix(y_true, y_pred, class_names, model_name):
 
 
 def save_predictions(y_true, y_pred, image_paths, class_names, model_name):
+    # Identify which test predictions are correct.
     correct = y_true == y_pred
 
     records = []
 
+    # Build one CSV record containing both numeric and readable labels.
     for i in range(len(y_true)):
         records.append({
             "image": Path(image_paths[i]).relative_to(PROJECT_ROOT).as_posix(),
@@ -142,6 +158,7 @@ def save_predictions(y_true, y_pred, image_paths, class_names, model_name):
 
     df = pd.DataFrame(records)
 
+    # Create the output directory and save one row per test image.
     PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
     df.to_csv(
@@ -149,23 +166,27 @@ def save_predictions(y_true, y_pred, image_paths, class_names, model_name):
         index=False
     )
 
+    # Summarize prediction counts in the terminal.
     print(f"Correct predictions: {correct.sum()}/{len(correct)}")
     print(f"Incorrect predictions: {(~correct).sum()}/{len(correct)}")
 
 
 def evaluate_all():
+    # Use a GPU for evaluation when CUDA is available.
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
 
     print(f"Device: {device}")
 
+    # Load the test dataset and reuse the test loader for every model.
     _, _, test_loader = get_dataloaders()
 
     test_dataset = test_loader.dataset
     class_names = test_dataset.classes
     image_paths = test_dataset._images
 
+    # Store metrics for all evaluated approaches.
     all_results = {}
 
     # ---------------------------------------------------------
@@ -174,8 +195,10 @@ def evaluate_all():
 
     print("\nEvaluating full fine-tuning...")
 
+    # Construct the model and move it to the selected device.
     model = build_model("full_finetuning").to(device)
 
+    # Load the best full-fine-tuning weights saved during training.
     checkpoint = torch.load(
         CHECKPOINT_DIR / "full_finetuning_best.pth",
         map_location=device
@@ -183,6 +206,7 @@ def evaluate_all():
 
     model.load_state_dict(checkpoint["model_state_dict"])
 
+    # Run test-set inference and calculate this experiment's metrics.
     y_true, y_pred, eval_time = evaluate_torch_model(
         model, test_loader, device
     )
@@ -202,6 +226,7 @@ def evaluate_all():
         "full_finetuning"
     )
 
+    # Release model memory before loading the next experiment.
     del model
 
     # ---------------------------------------------------------
@@ -210,8 +235,10 @@ def evaluate_all():
 
     print("\nEvaluating classifier-head training...")
 
+    # Construct the model with only the classifier head trainable.
     model = build_model("head_training").to(device)
 
+    # Load the best classifier-head-training checkpoint.
     checkpoint = torch.load(
         CHECKPOINT_DIR / "head_training_best.pth",
         map_location=device
@@ -219,6 +246,7 @@ def evaluate_all():
 
     model.load_state_dict(checkpoint["model_state_dict"])
 
+    # Run test-set inference and calculate this experiment's metrics.
     y_true, y_pred, eval_time = evaluate_torch_model(
         model, test_loader, device
     )
@@ -238,6 +266,7 @@ def evaluate_all():
         "head_training"
     )
 
+    # Release model memory before feature extraction.
     del model
 
     # ---------------------------------------------------------
@@ -246,16 +275,20 @@ def evaluate_all():
 
     print("\nEvaluating feature extraction + Linear SVM...")
 
+    # Freeze the pretrained network and use it as a feature extractor.
     model = build_model("feature_extraction").to(device)
 
+    # Convert test images into feature vectors and collect true labels.
     X_test, y_true, extraction_time = extract_test_features(
         model, test_loader, device
     )
 
+    # Load the linear SVM selected during classifier training.
     svm = joblib.load(
         CHECKPOINT_DIR / "linear_svm_best.joblib"
     )
 
+    # Use the SVM to classify the extracted test features.
     y_pred = svm.predict(X_test)
 
     all_results["feature_extraction_svm"] = calculate_metrics(
@@ -280,12 +313,14 @@ def evaluate_all():
 
     METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Store all results in a readable, machine-readable JSON file.
     with open(METRICS_DIR / "test_metrics.json", "w") as f:
         json.dump(all_results, f, indent=4)
 
     print("\nFINAL TEST RESULTS")
     print("------------------")
 
+    # Print a compact summary for all three approaches.
     for name, metrics in all_results.items():
         print(
             f"{name}: "

@@ -16,7 +16,7 @@ def build_model(strategy="full_finetuning"):
     model = mobilenet_v3_small(weights=weights)
 
     # Replace the final classifier layer
-    in_features = model.classifier[3].in_features
+    in_features = model.classifier[3].in_features # information about the class at: https://github.com/pytorch/vision/blob/main/torchvision/models/mobilenetv3.py
     model.classifier[3] = nn.Linear(in_features, NUM_CLASSES)
 
     # Configure trainable parameters
